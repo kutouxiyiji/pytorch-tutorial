@@ -2,16 +2,19 @@ import torch
 import torch.nn as nn
 import torchvision
 import torchvision.transforms as transforms
+import sys
 
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f'Current device: {device}')
+print(f'Python executable: {sys.executable}')
 
 # Hyper-parameters 
-input_size = 784
+input_size = 784 # 28* 28
 hidden_size = 500
 num_classes = 10
-num_epochs = 5
+num_epochs = 1 # 5
 batch_size = 100
 learning_rate = 0.001
 
@@ -65,6 +68,13 @@ for epoch in range(num_epochs):
         # Forward pass
         outputs = model(images)
         loss = criterion(outputs, labels)
+
+        # print samples.
+        if i == 0:
+            print(f'image shape: {images.shape}')
+            print(f'label shape: {labels.shape}')
+            print(f'output shape: {outputs.shape}')
+            print(f'loss: {loss.item()}')
         
         # Backward and optimize
         optimizer.zero_grad()
