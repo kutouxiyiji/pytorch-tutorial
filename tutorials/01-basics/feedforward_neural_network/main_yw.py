@@ -62,7 +62,7 @@ for epoch in range(num_epochs):
                 labels = labels.to(device)
 
                 # Forward
-                outputs = model.forward(images)
+                outputs = model(images)
                 loss = criterion(outputs, labels)
                 total_loss += loss.item()
 
