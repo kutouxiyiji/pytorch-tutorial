@@ -35,13 +35,13 @@ data_loader = torch.utils.data.DataLoader(dataset=dataset,
                                           shuffle=True)
 
 
-# VAE model
+# VAE model. Variational Autoencoder.
 class VAE(nn.Module):
     def __init__(self, image_size=784, h_dim=400, z_dim=20):
         super(VAE, self).__init__()
         self.fc1 = nn.Linear(image_size, h_dim)
-        self.fc2 = nn.Linear(h_dim, z_dim)
-        self.fc3 = nn.Linear(h_dim, z_dim)
+        self.fc2 = nn.Linear(h_dim, z_dim)  # mu
+        self.fc3 = nn.Linear(h_dim, z_dim)  # log_var
         self.fc4 = nn.Linear(z_dim, h_dim)
         self.fc5 = nn.Linear(h_dim, image_size)
         
@@ -50,13 +50,15 @@ class VAE(nn.Module):
         return self.fc2(h), self.fc3(h)
     
     def reparameterize(self, mu, log_var):
-        std = torch.exp(log_var/2)
-        eps = torch.randn_like(std)
-        return mu + eps * std
+        std = torch.exp(log_var/2)  # This calculates sigma from log_var, log(var) = log(std^2) --> std == exp(log_var/2), log_var will make sure it's positive.
+                                    # If use var directly, the var can be small, then the log_var will be very large.
+        eps = torch.randn_like(std) # This samples epsilon from N(0, 1) with same size like std. It's Monte Carlo process/estimation. Same eps will be used in backwards.
+        return mu + eps * std       # This computes z
 
     def decode(self, z):
         h = F.relu(self.fc4(z))
-        return F.sigmoid(self.fc5(h))
+        return F.sigmoid(self.fc5(h)) # for the cross-entropy loss, and the [0,1] range matches the images with normalization
+                                      # it's also good for channel is on or off for grayscale.
     
     def forward(self, x):
         mu, log_var = self.encode(x)
@@ -71,12 +73,13 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 for epoch in range(num_epochs):
     for i, (x, _) in enumerate(data_loader):
         # Forward pass
-        x = x.to(device).view(-1, image_size)
+        x = x.to(device).view(-1, image_size) # view share the same data (memory), so data in memory must be continous.
         x_reconst, mu, log_var = model(x)
         
         # Compute reconstruction loss and kl divergence
         # For KL divergence, see Appendix B in VAE paper or http://yunjey47.tistory.com/43
         reconst_loss = F.binary_cross_entropy(x_reconst, x, size_average=False)
+        # KL(N(μ,σ^2)∣∣N(0,1))
         kl_div = - 0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
         
         # Backprop and optimize
